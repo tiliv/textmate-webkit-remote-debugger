@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>contactEmailRot13</key>
+	<string>gbavtugfynfgfbat@tznvy.pbz</string>
+	<key>contactName</key>
+	<string>Tim Valenta</string>
+	<key>description</key>
+	<string>New shiny bundle for X.</string>
+	<key>name</key>
+	<string>Chrome Live Debugger</string>
+	<key>uuid</key>
+	<string>872280AF-57BE-4178-8749-680AE855C2C5</string>
+</dict>
+</plist>
