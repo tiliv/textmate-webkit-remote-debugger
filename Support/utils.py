@@ -1,6 +1,7 @@
 import urllib2
 import json
 from cgi import escape
+import re
 
 from api import API
 
@@ -19,7 +20,13 @@ def get_connection(tab):
 def get_tab_list(host, port):
     """ Returns full tab list from remote debugging API. """
     url = "http://{}:{}/json".format(host, port)
-    return json.loads(urllib2.urlopen(url).read().decode())
+    
+    try:
+        response = urllib2.urlopen(url)
+    except Exception:
+        raise Exception("Can't connect to {}:{}".format(host, port))
+    else:
+        return json.loads(response.read().decode())
 
 def get_candidate_tabs(host, port):
     """ Returns tabs using the ``file://`` protocol not already tied up by a connection. """
@@ -27,10 +34,10 @@ def get_candidate_tabs(host, port):
 
 def is_candidate_tab(tab):
     """ Returns True/False if the tab can have a connection established. """
-    return is_file_tab(tab) and is_available(tab)
+    return is_local_tab(tab) and is_available(tab)
 
-def is_file_tab(tab):
-    return tab['url'].startswith('file://')
+def is_local_tab(tab):
+    return re.match(r'^(?:file://|https?://(localhost|127\.0\.0\.1)[:/])', tab['url'])
 
 def is_available(tab):
     return 'webSocketDebuggerUrl' in tab
