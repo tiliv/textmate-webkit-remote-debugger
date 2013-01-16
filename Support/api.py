@@ -1,10 +1,9 @@
 import json
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 from UserDict import UserDict
+import cgi
 
 from websocket import create_connection
-
-nodes = {}
 
 class RemoteDebuggerError(Exception):
     def __init__(self, error_obj):
@@ -17,16 +16,6 @@ class UnexpectedMessageError(Exception):
     def __str__(self):
         return "{}"
 
-def rgb(r, g, b):
-    return {'r': r, 'g': g, 'b': b}
-
-def rgba(r, g, b, a):
-    return dict(rgb(r, g, b), a=a)
-
-HIGHLIGHT_STYLE = {
-    'borderColor': rgb(255, 0, 0),
-    'contentColor': rgba(255, 0, 0, 0.5),
-}
 
 def api_handler(method, args=(), returns=None, no_return=False, each=None):
     """
@@ -66,34 +55,37 @@ def api_handler(method, args=(), returns=None, no_return=False, each=None):
             for k, v in zip(kwargs.keys(), caller_args):
                 params[k] = v
             
-            # Read past incoming objects until we find the one matching the request.
-            # This will discard unhandled notifications sitting in the buffer from a previous call
-            # to an API method that generated them.
             request_id, response_data = self.request(method, params=params)
-            # while request_id != response_data.get('id'):
-            #     print '<hr />skipping', response_data
-            #     response_data = self.get_response()
+            notifications = defaultdict(list)
+            
+            # Read events that come back before the final confirmation response
+            # responses = []
+            while request_id != response_data.get('id'):
+                notifications[response_data['method']].append(Notification(**response_data))
+                response_data = self.get_response()
 
             if 'error' in response_data:
                 raise RemoteDebuggerError(response_data['error'])
             
             # Read notifications
             reading = True
-            notifications = {}
             while reading:
                 try:
                     notification = self.get_response()
                 except: # Skip timeout
                     reading = False
                 else:
-                    notifications[notification['method']] = Notification(**notification)
+                    try:
+                        notifications[notification['method']] = Notification(**notification)
+                    except:
+                        print "Response isn't a notification: {}".format(notification)
             
             # Move nested k:v pairs directly into the main dictionary's top level
             response_data = response_data.get('result', {})
             
             if each is not None:
                 value = [unbound_f(self, notifications=notifications, **item)
-                            for item in response_data[each]]
+                        for item in response_data[each]]
             
             value = unbound_f(self, notifications=notifications, **response_data)
             
@@ -104,7 +96,7 @@ def api_handler(method, args=(), returns=None, no_return=False, each=None):
         return _wrapper
     
     if returns is not None:
-        def _automatic_handler(self, request, **kwargs):
+        def _automatic_handler(self, **kwargs):
             return kwargs[returns]
         return _decorator(_automatic_handler)
     elif no_return:
@@ -155,9 +147,9 @@ class API(object):
     reload_page = api_handler("Page.reload", no_return=True)
     highlight_node = api_handler("DOM.highlightNode", args=('nodeId', 'highlightConfig'), no_return=True)
     
-    @api_handler("DOM.querySelectorAll", args=('nodeId', 'selector'), each='nodes')
-    def query_selector_all(self, **node):
-        return node['nodeId']
+    @api_handler("DOM.querySelectorAll", args=('nodeId', 'selector'))
+    def query_selector_all(self, notifications, nodeIds):
+        return nodeIds
 
 class AttrContainer(object):
     def __init__(self, **kwargs):
@@ -176,5 +168,4 @@ class Notification(AttrContainer):
     method = None
     
     def __init__(self, method, params={}):
-        super(Notification, self).__init__(**params)
-        self.method = method
+        super(Notification, self).__init__(method=method, **params)

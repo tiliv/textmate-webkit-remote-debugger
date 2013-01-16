@@ -5,9 +5,21 @@
 	<key>beforeRunningCommand</key>
 	<string>saveActiveFile</string>
 	<key>command</key>
-	<string>#!/bin/bash
+	<string>#! /usr/bin/env python
 
-"$TM_BUNDLE_SUPPORT/push.py" "${CHROME_LIVE_DEBUGGING_HOST:-localhost}" ${CHROME_LIVE_DEBUGGING_PORT:-9222} "${TM_FILEPATH}"
+import sys
+import os
+from functools import partial
+sys.path.insert(0, os.environ['TM_BUNDLE_SUPPORT'])
+
+from utils import get_tabs_with_css_file, push_resource
+
+tabs = get_tabs_with_css_file(os.environ['TM_FILENAME'])
+
+print "&lt;ul&gt;"
+for response in map(push_resource, tabs):
+    print "&lt;li&gt;{}&lt;/li&gt;".format(response)
+print "&lt;/ul&gt;"
 </string>
 	<key>input</key>
 	<string>none</string>
